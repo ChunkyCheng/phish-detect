@@ -1,6 +1,6 @@
 import sys
-import os
 from pathlib import Path
+import os
 
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
@@ -18,8 +18,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
-)
+    allow_headers=["*"],)
 
 
 class CheckRequest(BaseModel):
@@ -45,12 +44,12 @@ async def check_url(request: CheckRequest):
                 },
                 status_code=200,
             )
+
         features = extract_features(raw)
 
         # Step 2: AI verdict on structure alone
         step1 = is_suspicious(request.url, features)
         if not step1.get("suspicious"):
-            print(f"{request.url} is safe")
             # Safe — return early, no need to query corpus
             return JSONResponse(
                 {
@@ -62,13 +61,13 @@ async def check_url(request: CheckRequest):
                 }
             )
 
-        print(f"{request.url} is unsafe")
         # Step 3: query corpus for brand-specific phishing patterns
         similarity_context = query_dataset(os.getenv("DB_PATH"), features)
-        print(similarity_context)
 
         # Step 4: enrich verdict with corpus context
-        result = explain_with_context(request.url, similarity_context)
+        result = explain_with_context(
+            request.url, similarity_context, step1.get("reasons", [])
+        )
         return JSONResponse(result)
 
     except Exception as e:
