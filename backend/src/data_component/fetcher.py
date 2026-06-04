@@ -8,19 +8,18 @@ from pathlib import Path
 
 
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s | %(levelname)s | %(message)s"
+    level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s"
 )
 logging.getLogger("aiohttp.connector").setLevel(logging.CRITICAL)
 
-MAX_CONCURRENT = 100      # simultaneous connections
-TIMEOUT = 10              # seconds per request
-MAX_RETRIES = 2           # retries on transient failure
-RETRY_DELAY = 2           # seconds between retries
+MAX_CONCURRENT = 100  # simultaneous connections
+TIMEOUT = 10  # seconds per request
+MAX_RETRIES = 2  # retries on transient failure
+RETRY_DELAY = 2  # seconds between retries
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                  "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
+    "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 }
 
 
@@ -77,6 +76,7 @@ async def fetch_url(session: aiohttp.ClientSession, url: str) -> dict:
         "error": error,
     }
 
+
 def save_response(response: dict, output_dir: Path) -> None:
     url_id = hashlib.sha256(response["url"].encode()).hexdigest()
     outfile = output_dir / f"{url_id}.json"
@@ -109,8 +109,10 @@ async def process_urls(urls: list[str], output_dir: Path) -> tuple[int, int]:
                 success += 1
 
             if completed % 500 == 0 or completed == total:
-                print(f"  Progress: {completed}/{total} "
-                      f"({success} successful, {completed - success} failed)")
+                print(
+                    f"  Progress: {completed}/{total} "
+                    f"({success} successful, {completed - success} failed)"
+                )
 
     return total, success
 
@@ -149,8 +151,16 @@ def process_csv(csv_path: str) -> None:
     print(f"  Failed:   {total - success}")
 
 
+async def fetch_single_url(url: str) -> dict:
+    """Async fetch for a single URL - use with await in FastAPI"""
+    connector = aiohttp.TCPConnector(limit=1, ttl_dns_cache=300)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        return await fetch_url(session, url)  # reuses your existing fetch_url
+
+
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) == 2:
         try:
             process_csv(sys.argv[1])

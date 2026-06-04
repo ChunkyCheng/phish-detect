@@ -404,10 +404,13 @@ def query_dataset(db_path: str, feature_json: dict) -> SimilarityResult:
     """
     db_path = str(Path(db_path).resolve())
     if not Path(db_path).exists():
+        print(f"Database not found at {db_path}")
         return SimilarityResult(
             score=0.0, matched_signals=[], corpus_matches=0,
             error=f"Database not found: {db_path}",
         )
+    else:
+        print(f"Using database at {db_path}")
 
     brand_terms = extract_brand_terms(feature_json)
 
