@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="backend-url" content="{{ backend_url }}">
+    <title>PhishShield</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg-deep:       #0a0b10;
+            --bg-card:       rgba(30, 32, 48, 0.65);
+            --bg-input:      rgba(10, 11, 18, 0.7);
+            --border:        rgba(255,255,255,0.08);
+            --border-focus:  rgba(124, 93, 250, 0.55);
+            --accent:        #7c5dfa;
+            --accent-hover:  #6d4ef0;
+            --text:          #f0f0f8;
+            --muted:         #6b7280;
+            --safe:          #10b981;
+            --safe-bg:       rgba(16,185,129,0.1);
+            --safe-border:   rgba(16,185,129,0.25);
+            --suspicious:    #f59e0b;
+            --suspicious-bg: rgba(245,158,11,0.1);
+            --suspicious-border: rgba(245,158,11,0.25);
+            --phishing:      #ef4444;
+            --phishing-bg:   rgba(239,68,68,0.1);
+            --phishing-border: rgba(239,68,68,0.25);
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg-deep);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px 16px;
+            overflow-x: hidden;
+        }
+
+        /* Background glow */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 700px; height: 700px;
+            background: radial-gradient(circle, rgba(124,93,250,0.12) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .wrapper {
+            position: relative;
+            width: 100%;
+            max-width: 520px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        /* ── Header ── */
+        .header {
+            text-align: center;
+            animation: fadeIn 0.5s ease both;
+        }
+
+        .logo-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px; height: 56px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #7c5dfa, #a78bfa);
+            box-shadow: 0 8px 32px rgba(124,93,250,0.35);
+            margin-bottom: 14px;
+        }
+
+        .logo-icon svg { width: 28px; height: 28px; fill: white; }
+
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, #f0f0f8 30%, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .header p {
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+            animation: slideUp 0.4s cubic-bezier(.22,.68,0,1.1) 0.1s both;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .input-wrap:focus-within {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(124,93,250,0.12);
+        }
+
+        .input-wrap.error {
+            border-color: rgba(239,68,68,0.55);
+            box-shadow: 0 0 0 3px rgba(239,68,68,0.1);
+        }
+
+        .input-wrap svg { flex-shrink: 0; color: var(--muted); }
+
+        .input-wrap input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text);
+            min-width: 0;
+        }
+
+        .input-wrap input::placeholder { color: #3a3d52; }
+        .input-wrap input:disabled { opacity: 0.45; }
+
+        .btn-clear {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            padding: 2px;
+            opacity: 0.6;
+            transition: opacity 0.15s;
+        }
+        .btn-clear:hover { opacity: 1; }
+
+        .error-msg {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #f87171;
+            font-size: 0.78rem;
+            margin-top: 8px;
+        }
+
+        .btn-check {
+            width: 100%;
+            margin-top: 14px;
+            padding: 13px;
+            border: none;
+            border-radius: 12px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: white;
+            background: linear-gradient(135deg, #7c5dfa, #a78bfa);
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+            box-shadow: 0 4px 20px rgba(124,93,250,0.35);
+        }
+
+        .btn-check:hover:not(:disabled) {
+            box-shadow: 0 6px 28px rgba(124,93,250,0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-check:active:not(:disabled) { transform: scale(0.98); }
+        .btn-check:disabled { opacity: 0.38; cursor: not-allowed; }
+
+        .hint {
+            text-align: center;
+            font-size: 0.75rem;
+            color: #2e3047;
+            margin-top: 10px;
+        }
+
+        kbd {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.68rem;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 4px;
+            padding: 1px 5px;
+            color: #6b7280;
+        }
+
+        /* ── Scanning ── */
+        .scanning-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 32px 24px;
+            text-align: center;
+            animation: fadeIn 0.3s ease both;
+            box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+        }
+
+        .pulse-rings {
+            position: relative;
+            width: 64px; height: 64px;
+            margin: 0 auto 16px;
+        }
+
+        .pulse-rings::before,
+        .pulse-rings::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            border: 2px solid rgba(124,93,250,0.3);
+            animation: pulse-ring 1.6s ease-out infinite;
+        }
+
+        .pulse-rings::after { animation-delay: 0.6s; }
+
+        .shield-circle {
+            width: 64px; height: 64px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #7c5dfa, #a78bfa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .shield-circle svg { width: 28px; height: 28px; fill: white; }
+
+        .scanning-title { font-size: 0.9rem; font-weight: 600; color: #c4c6d8; }
+        .scanning-sub   { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+        .dots { display: flex; gap: 6px; justify-content: center; margin-top: 16px; }
+        .dots span {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--accent);
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+        .dots span:nth-child(2) { animation-delay: 0.15s; }
+        .dots span:nth-child(3) { animation-delay: 0.3s; }
+        .dots span:nth-child(4) { animation-delay: 0.45s; }
+
+        /* ── Result card ── */
+        .result-card {
+            border-radius: 24px;
+            border-width: 1px;
+            border-style: solid;
+            overflow: hidden;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+            animation: slideUp 0.35s cubic-bezier(.22,.68,0,1.2) both;
+        }
+
+        .result-card.safe       { background: rgba(16,185,129,0.06);  border-color: var(--safe-border); }
+        .result-card.suspicious { background: rgba(245,158,11,0.06);  border-color: var(--suspicious-border); }
+        .result-card.phishing   { background: rgba(239,68,68,0.06);   border-color: var(--phishing-border); }
+
+        .result-top { padding: 20px 22px; }
+
+        .verdict-row {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .verdict-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 14px;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border-width: 1px;
+            border-style: solid;
+        }
+
+        .verdict-badge.safe       { background: var(--safe-bg);       border-color: var(--safe-border);       color: #34d399; }
+        .verdict-badge.suspicious { background: var(--suspicious-bg); border-color: var(--suspicious-border); color: #fbbf24; }
+        .verdict-badge.phishing   { background: var(--phishing-bg);   border-color: var(--phishing-border);   color: #f87171; }
+
+        .verdict-badge svg { width: 14px; height: 14px; fill: currentColor; }
+
+        .ai-tag {
+            font-size: 0.68rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+            padding-top: 4px;
+        }
+
+        /* Checked URL box */
+        .url-box {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 10px 14px;
+            margin-bottom: 16px;
+        }
+
+        .url-box-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .url-text {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.78rem;
+            color: #9ca3af;
+            word-break: break-all;
+            line-height: 1.5;
+            user-select: text;
+            cursor: text;
+            pointer-events: auto;
+        }
+
+        /* Risk score bar */
+        .risk-label-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 7px;
+        }
+
+        .risk-label-text {
+            font-size: 0.72rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--muted);
+        }
+
+        .risk-score-num {
+            font-size: 1.25rem;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .risk-score-num.safe       { color: var(--safe); }
+        .risk-score-num.suspicious { color: var(--suspicious); }
+        .risk-score-num.phishing   { color: var(--phishing); }
+        .risk-score-denom { font-size: 0.75rem; font-weight: 400; color: var(--muted); }
+
+        .bar-track {
+            height: 6px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 100px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 100px;
+            transition: width 0.8s cubic-bezier(.22,.68,0,1.1);
+        }
+        .bar-fill.safe       { background: linear-gradient(90deg, #059669, #10b981); }
+        .bar-fill.suspicious { background: linear-gradient(90deg, #d97706, #f59e0b); }
+        .bar-fill.phishing   { background: linear-gradient(90deg, #dc2626, #ef4444); }
+
+        /* Reasons */
+        .result-reasons {
+            border-top: 1px solid rgba(255,255,255,0.05);
+            padding: 16px 22px;
+        }
+
+        .reasons-heading {
+            font-size: 0.68rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .reasons-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 9px;
+        }
+
+        .reasons-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            font-size: 0.83rem;
+            color: #9ca3af;
+            line-height: 1.5;
+        }
+
+        .dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 6px;
+        }
+        .dot.safe       { background: var(--safe); }
+        .dot.suspicious { background: var(--suspicious); }
+        .dot.phishing   { background: var(--phishing); }
+
+        .btn-reset {
+            width: 100%;
+            margin-top: 8px;
+            padding: 11px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: transparent;
+            color: var(--muted);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .btn-reset:hover {
+            background: rgba(255,255,255,0.04);
+            color: #c4c6d8;
+            border-color: rgba(255,255,255,0.14);
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.72rem;
+            color: #1e2030;
+            margin-top: 4px;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(16px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0)    scale(1); }
+        }
+        @keyframes pulse-ring {
+            0%   { transform: scale(1);   opacity: 0.5; }
+            100% { transform: scale(1.5); opacity: 0; }
+        }
+        @keyframes bounce {
+            0%, 60%, 100% { transform: translateY(0); }
+            30%           { transform: translateY(-6px); }
+        }
+
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+        </div>
+        <h1>PhishShield</h1>
+        <p>AI-powered phishing URL detection</p>
+    </div>
+
+    <!-- Input card -->
+    <div class="card">
+        <label class="field-label">URL to check</label>
+
+        <div class="input-wrap" id="inputWrap">
+            <!-- link icon -->
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+            <input
+                id="urlInput"
+                type="text"
+                placeholder="https://example.com/login"
+                autocomplete="off"
+                spellcheck="false"
+            />
+            <button class="btn-clear hidden" id="clearBtn" title="Clear">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                </svg>
+            </button>
+        </div>
+
+        <p class="error-msg hidden" id="errorMsg">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+            <span id="errorText"></span>
+        </p>
+
+        <button class="btn-check" id="checkBtn" disabled>Check URL</button>
+        <p class="hint">Press <kbd>Enter</kbd> or click Check</p>
+    </div>
+
+    <!-- Scanning state -->
+    <div class="scanning-card hidden" id="scanningCard">
+        <div class="pulse-rings">
+            <div class="shield-circle">
+                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z"/></svg>
+            </div>
+        </div>
+        <p class="scanning-title">Analysing URL…</p>
+        <p class="scanning-sub">Checking against phishing database</p>
+        <div class="dots">
+            <span></span><span></span><span></span><span></span>
+        </div>
+    </div>
+
+    <!-- Result -->
+    <div id="resultArea"></div>
+
+    <p class="footer">Results are AI-generated and for educational purposes only.</p>
+
+</div>
+
+<script>
+    const BACKEND_URL =
+        document.querySelector('meta[name="backend-url"]')?.content || '';
+
+    const urlInput    = document.getElementById('urlInput');
+    const inputWrap   = document.getElementById('inputWrap');
+    const clearBtn    = document.getElementById('clearBtn');
+    const errorMsg    = document.getElementById('errorMsg');
+    const errorText   = document.getElementById('errorText');
+    const checkBtn    = document.getElementById('checkBtn');
+    const scanningCard = document.getElementById('scanningCard');
+    const resultArea  = document.getElementById('resultArea');
+    let isLoading     = false;
+
+    // Input events
+    urlInput.addEventListener('input', () => {
+        const val = urlInput.value.trim();
+        checkBtn.disabled = !val || isLoading;
+        clearBtn.classList.toggle('hidden', !urlInput.value);
+        if (val) hideError();
+    });
+
+    urlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); handleCheck(); }
+    });
+
+    clearBtn.addEventListener('click', () => {
+        urlInput.value = '';
+        clearBtn.classList.add('hidden');
+        checkBtn.disabled = true;
+        hideError();
+        urlInput.focus();
+    });
+
+    checkBtn.addEventListener('click', handleCheck);
+
+    // ── Main handler ──────────────────────────────────────────────
+    async function handleCheck() {
+        const url = urlInput.value.trim();
+        if (!url || isLoading) return;
+
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            showError('Please enter a full URL starting with http:// or https://');
+            return;
+        }
+
+        hideError();
+        resultArea.innerHTML = '';
+        setLoading(true);
+
+        try {
+            const response = await fetch(`${BACKEND_URL}/check`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+
+            const data = await response.json();
+            setLoading(false);
+
+            if (!response.ok) {
+                renderResult({
+                    url,
+                    verdict: 'error',
+                    risk_score: 0,
+                    reasons: [data.reasons?.[0] || `Server error ${response.status}`]
+                });
+                return;
+            }
+
+            renderResult({ url, ...data });
+
+        } catch (err) {
+            setLoading(false);
+            showError('Could not reach the server. Is the backend running?');
+        }
+    }
+
+    // ── Render result card ────────────────────────────────────────
+    function renderResult(data) {
+        const { url, verdict, risk_score, reasons } = data;
+        const v = ['safe','suspicious','phishing'].includes(verdict) ? verdict : 'suspicious';
+
+        const icons = {
+            safe:       '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>',
+            suspicious: '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 14h-2v-2h2v2zm0-4h-2V7h2v4z"/>',
+            phishing:   '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 14h-2v-2h2v2zm0-4h-2V7h2v4z"/>',
+        };
+
+        const labels = { safe: '✓ Safe', suspicious: '⚠ Suspicious', phishing: '✕ Phishing' };
+
+        const reasonsHtml = (reasons || []).map(r =>
+            `<li><div class="dot ${v}"></div><span>${escHtml(r)}</span></li>`
+        ).join('');
+
+        resultArea.innerHTML = `
+            <div class="result-card ${v}">
+                <div class="result-top">
+                    <div class="verdict-row">
+                        <div class="verdict-badge ${v}">
+                            <svg viewBox="0 0 24 24">${icons[v]}</svg>
+                            ${labels[v]}
+                        </div>
+                        <span class="ai-tag">AI verdict</span>
+                    </div>
+
+                    <div class="url-box">
+                        <p class="url-box-label">URL checked</p>
+                        <p class="url-text">${escHtml(url)}</p>
+                    </div>
+
+                    <div class="risk-label-row">
+                        <span class="risk-label-text">Risk Score</span>
+                        <span class="risk-score-num ${v}">${risk_score}<span class="risk-score-denom">/100</span></span>
+                    </div>
+                    <div class="bar-track">
+                        <div class="bar-fill ${v}" id="barFill" style="width:0%"></div>
+                    </div>
+                </div>
+
+                ${reasonsHtml ? `
+                <div class="result-reasons">
+                    <p class="reasons-heading">Why</p>
+                    <ul class="reasons-list">${reasonsHtml}</ul>
+                </div>` : ''}
+            </div>
+            <button class="btn-reset" id="resetBtn">Check another URL</button>
+        `;
+
+        // Animate bar
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                const fill = document.getElementById('barFill');
+                if (fill) fill.style.width = `${risk_score}%`;
+            });
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            resultArea.innerHTML = '';
+            urlInput.value = '';
+            clearBtn.classList.add('hidden');
+            checkBtn.disabled = true;
+            urlInput.focus();
+        });
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────
+    function setLoading(state) {
+        isLoading = state;
+        checkBtn.disabled = state;
+        checkBtn.textContent = state ? 'Analysing…' : 'Check URL';
+        scanningCard.classList.toggle('hidden', !state);
+        urlInput.disabled = state;
+    }
+
+    function showError(msg) {
+        errorText.textContent = msg;
+        errorMsg.classList.remove('hidden');
+        inputWrap.classList.add('error');
+    }
+
+    function hideError() {
+        errorMsg.classList.add('hidden');
+        inputWrap.classList.remove('error');
+    }
+
+    function escHtml(str) {
+        return String(str)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+</script>
+</body>
+</html>
