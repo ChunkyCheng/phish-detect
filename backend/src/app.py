@@ -1,19 +1,15 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(
-    0, str(Path(__file__).parent.parent)
-)  # adds phishing_w4/ to Python path
-
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from gemini_prompt import is_suspicious, explain_with_context
-from data_component.src.fetcher import fetch_single_url
-from data_component.src.processor import extract_features
-from data_component.src.similarity_match import query_dataset
+from data_component.fetcher import fetch_single_url
+from data_component.processor import extract_features
+from data_component.similarity_match import query_dataset
 
 app = FastAPI()
 
@@ -21,8 +17,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],
-)
+    allow_headers=["*"],)
 
 
 class CheckRequest(BaseModel):
@@ -66,7 +61,7 @@ async def check_url(request: CheckRequest):
             )
 
         # Step 3: query corpus for brand-specific phishing patterns
-        similarity_context = query_dataset(request.url, features)
+        similarity_context = query_dataset(os.getenv("DB_PATH"), features)
 
         # Step 4: enrich verdict with corpus context
         result = explain_with_context(
