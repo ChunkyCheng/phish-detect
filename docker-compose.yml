@@ -1,0 +1,20 @@
+name: phishield
+
+services:
+  frontend:
+    build: ./frontend
+    image: frontend
+    container_name: frontend
+    ports:
+      - "8000:8000"
+
+  backend:
+    build: ./backend
+    image: backend
+    container_name: backend
+    ports: 
+      - "8001:8001"
+    env_file:
+      - .env
+    volumes:
+      - ${DB_PATH}:/app/phishing.db
