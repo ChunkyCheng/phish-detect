@@ -1,5 +1,3 @@
-import sys
-from pathlib import Path
 import os
 
 from fastapi import FastAPI
@@ -18,7 +16,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
-    allow_headers=["*"],)
+    allow_headers=["*"],
+)
 
 
 class CheckRequest(BaseModel):
@@ -36,10 +35,9 @@ async def check_url(request: CheckRequest):
             return JSONResponse(
                 {
                     "verdict": "suspicious",
-                    "risk_score": 40,  # non-zero, signals something's off
+                    "risk_score": 0,
                     "reasons": [
-                        f"Could not reach the URL: {raw.get('error', 'unknown error')}",
-                        "Unreachable URLs are commonly associated with taken-down phishing sites",
+                        "Could not make the assessment, this site is unreachable.",
                     ],
                 },
                 status_code=200,
