@@ -627,8 +627,8 @@
             if (!response.ok) {
                 renderResult({
                     url,
-                    verdict: 'error',
-                    risk_score: 0,
+                    verdict: 'unreachable',
+                    risk_score: null,
                     reasons: [data.reasons?.[0] || `Server error ${response.status}`]
                 });
                 return;
@@ -683,7 +683,7 @@
                             <svg viewBox="0 0 24 24">${icons[v]}</svg>
                             ${labels[v]}
                         </div>
-                        <span class="ai-tag">${v === 'unreachable' ? 'Fetch failed' : 'AI verdict'}</span>
+                        <span class="ai-tag">${v === 'unreachable' ? 'Analysis failed' : 'AI verdict'}</span>
                     </div>
 
                     <div class="url-box">

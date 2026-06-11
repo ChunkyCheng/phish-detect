@@ -91,6 +91,16 @@ async def check_url(request: CheckRequest):
         return JSONResponse(result)
 
     except Exception as e:
+        err = str(e)
+        if "503" in err or "UNAVAILABLE" in err:
+            msg = "AI service is temporarily busy — please try again in a moment."
+        elif "500" in err or "INTERNAL" in err:
+            msg = "AI service encountered an error — please try again."
+        elif "401" in err or "403" in err:
+            msg = "API key error — check your GEMINI_API_KEY configuration."
+        else:
+            msg = "An unexpected error occurred — please try again."
         return JSONResponse(
-            {"verdict": "error", "risk_score": 0, "reasons": [str(e)]}, status_code=500
+            {"verdict": "unreachable", "risk_score": None, "reasons": [msg]},
+            status_code=200,
         )
