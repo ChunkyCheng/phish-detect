@@ -32,15 +32,24 @@ async def check_url(request: CheckRequest):
 
         # fetch failure check
         if not raw.get("success") or raw.get("body") is None:
+            error = raw.get("error", "unknown")
+
+            if "timeout" in str(error):
+                status = "Connection timed out"
+            elif "dns" in str(error).lower() or "resolve" in str(error).lower():
+                status = "Domain does not exist"
+            else:
+                status = "Website unreachable"
             return JSONResponse(
                 {
-                    "verdict": "suspicious",
-                    "risk_score": 0,
+                    "verdict": "unreachable",
+                    "risk_score": None,
                     "reasons": [
-                        "Could not make the assessment, this site is unreachable.",
+                        f"{status} — PhishShield could not fetch this page.",
+                        "No phishing analysis was performed.",
+                        "Tip: Check the URL is correct and the site is online.",
                     ],
                 },
-                status_code=200,
             )
 
         features = extract_features(raw)
@@ -52,7 +61,7 @@ async def check_url(request: CheckRequest):
             return JSONResponse(
                 {
                     "verdict": "safe",
-                    "risk_score": max(0, 100 - step1.get("confidence", 90)),
+                    "risk_score": step1.get("confidence", 10),
                     "reasons": step1.get(
                         "reasons", ["No suspicious signals detected."]
                     ),
@@ -62,9 +71,22 @@ async def check_url(request: CheckRequest):
         # Step 3: query corpus for brand-specific phishing patterns
         similarity_context = query_dataset(os.getenv("DB_PATH"), features)
 
+        # Combine: Step 1 AI confidence (60%) + corpus signal score (40%)
+        step1_confidence = step1.get("confidence", 50)
+        corpus_score = similarity_context.score * 100
+        combined_risk = int(0.6 * step1_confidence + 0.4 * corpus_score)
+
+        # check calculation
+        print(
+            f"[Score] step1_confidence={step1_confidence} | "
+            f"corpus_score={corpus_score:.1f} | "
+            f"combined_risk={combined_risk}",
+            flush=True,
+        )
+
         # Step 4: enrich verdict with corpus context
         result = explain_with_context(
-            request.url, similarity_context, step1.get("reasons", [])
+            request.url, similarity_context, step1.get("reasons", []), combined_risk
         )
         return JSONResponse(result)
 
