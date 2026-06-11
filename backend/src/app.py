@@ -88,6 +88,9 @@ async def check_url(request: CheckRequest):
         result = explain_with_context(
             request.url, similarity_context, step1.get("reasons", []), combined_risk
         )
+        # Cap verdict: low corpus similarity is not strong enough evidence for "phishing"
+        if result.get("verdict") == "phishing" and corpus_score < 50:
+            result["verdict"] = "suspicious"
         return JSONResponse(result)
 
     except Exception as e:
