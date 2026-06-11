@@ -21,7 +21,7 @@ if not api_key:
 # like personal connection to google ai service
 client = genai.Client(api_key=api_key)
 
-model = "gemma-4-26b-a4b-it"
+model = "gemini-2.5-flash"  # "gemma-4-31b-it"  # "gemma-4-26b-a4b-it"
 
 
 def call(prompt: str) -> str:
@@ -50,12 +50,13 @@ def is_suspicious(url: str, features: dict) -> dict:
     Returns {"suspicious": bool, "confidence": 0-100, "reasons": [...]}
     """
     signals = numeric_bool_only(features)
+    print(f"[Step 1] Calling Gemini for: {url}", flush=True)  # checking purpose
 
     prompt = f"""
         You are a cybersecurity expert analysing a URL for phishing risk.
         
         URL submitted: {url}
-        
+
         Extracted structural signals (no raw page text — evaluate structure only):
         {json.dumps(signals, indent=2)}
         
@@ -63,17 +64,26 @@ def is_suspicious(url: str, features: dict) -> dict:
         Do NOT judge based on BRAND NAMES OR DOMAINS in the URL string AT ALL.
         Return ONLY valid JSON:
         {{
-        "suspicious": true or false,
-        "confidence": 0-100,
+        "confidence": a 0-100 integer representing phishing risk level:
+            - 90-100 = multiple strong phishing signals
+            - 70-89  = several moderate signals
+            - 50-69  = a few weak signals
+            - below 50 = minimal evidence, borderline call
+        Set "suspicious": true if confidence >= 60, false otherwise.
         "reasons": ["one-line reason 1", "one-line reason 2"]
         }}
     """
-    return json.loads(call(prompt))
+    result = json.loads(call(prompt))
+    print(
+        f"[Step 1] OK — suspicious={result.get('suspicious')}, confidence={result.get('confidence')}",
+        flush=True,
+    )
+    return result
 
 
 # gemini second call
 def explain_with_context(
-    url: str, similarity_context: str, step1_reasons: list[str]
+    url: str, similarity_context: str, step1_reasons: list[str], risk_score: int
 ) -> dict:
     """
     Second-pass: Given we already know this URL is suspicious, explain it with corpus context.
@@ -83,6 +93,11 @@ def explain_with_context(
         if step1_reasons
         else "No specific reasons captured."
     )
+    print(f"[Step 2] Calling Gemini for: {url}", flush=True)  # checking purpose
+    print(
+        f"[Step 2] Similarity context length: {len(str(similarity_context))}",
+        flush=True,
+    )  # checking purpose
 
     prompt = f"""
         You are a phishing analyst. A URL has already been flagged as SUSPICIOUS by structural analysis.
@@ -101,7 +116,6 @@ def explain_with_context(
         Return ONLY valid JSON:
         {{
         "verdict": "suspicious" or "phishing",
-        "risk_score": 0-100,
         "reasons": [
             "Plain-English explanation 1",
             "Plain-English explanation 2"
@@ -110,4 +124,10 @@ def explain_with_context(
         Use "phishing" if corpus similarity strongly confirms a known phishing campaign.
         Use "suspicious" if the structural signals alone are the main evidence.
     """
-    return json.loads(call(prompt))
+    result = json.loads(call(prompt))
+    result["risk_score"] = risk_score  # inject calculated score from backend firmula
+    print(
+        f"[Step 2] OK — verdict={result.get('verdict')}, risk_score={risk_score}",
+        flush=True,
+    )  # checking purpose
+    return result
