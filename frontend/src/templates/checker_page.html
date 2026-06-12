@@ -28,6 +28,9 @@
             --phishing:      #ef4444;
             --phishing-bg:   rgba(239,68,68,0.1);
             --phishing-border: rgba(239,68,68,0.25);
+            --unreachable:        #9ca3af;
+            --unreachable-border: #4b5563;
+            --unreachable-bg:     rgba(107, 114, 128, 0.15);
         }
 
         body {
@@ -287,6 +290,7 @@
         .result-card.safe       { background: rgba(16,185,129,0.06);  border-color: var(--safe-border); }
         .result-card.suspicious { background: rgba(245,158,11,0.06);  border-color: var(--suspicious-border); }
         .result-card.phishing   { background: rgba(239,68,68,0.06);   border-color: var(--phishing-border); }
+        .result-card.unreachable  { background: rgba(107,114,128,0.06); border-color: var(--unreachable-border); }
 
         .result-top { padding: 20px 22px; }
 
@@ -312,6 +316,7 @@
         .verdict-badge.safe       { background: var(--safe-bg);       border-color: var(--safe-border);       color: #34d399; }
         .verdict-badge.suspicious { background: var(--suspicious-bg); border-color: var(--suspicious-border); color: #fbbf24; }
         .verdict-badge.phishing   { background: var(--phishing-bg);   border-color: var(--phishing-border);   color: #f87171; }
+        .verdict-badge.unreachable { background: var(--unreachable-bg); border-color: var(--unreachable-border); color: var(--unreachable); }
 
         .verdict-badge svg { width: 14px; height: 14px; fill: currentColor; }
 
@@ -376,7 +381,15 @@
         .risk-score-num.safe       { color: var(--safe); }
         .risk-score-num.suspicious { color: var(--suspicious); }
         .risk-score-num.phishing   { color: var(--phishing); }
+        .risk-score-num.unreachable { color: var(--unreachable); }
         .risk-score-denom { font-size: 0.75rem; font-weight: 400; color: var(--muted); }
+
+        .score-note {
+            font-size: 0.72rem;
+            color: #6b7280;
+            margin-top: 6px;
+            text-align: right;
+        }
 
         .bar-track {
             height: 6px;
@@ -393,6 +406,7 @@
         .bar-fill.safe       { background: linear-gradient(90deg, #059669, #10b981); }
         .bar-fill.suspicious { background: linear-gradient(90deg, #d97706, #f59e0b); }
         .bar-fill.phishing   { background: linear-gradient(90deg, #dc2626, #ef4444); }
+        .bar-fill.unreachable     { background: linear-gradient(90deg, #374151, #6b7280); }
 
         /* Reasons */
         .result-reasons {
@@ -434,6 +448,7 @@
         .dot.safe       { background: var(--safe); }
         .dot.suspicious { background: var(--suspicious); }
         .dot.phishing   { background: var(--phishing); }
+        .dot.unreachable{ background: var(--unreachable); }
 
         .btn-reset {
             width: 100%;
@@ -612,8 +627,8 @@
             if (!response.ok) {
                 renderResult({
                     url,
-                    verdict: 'error',
-                    risk_score: 0,
+                    verdict: 'unreachable',
+                    risk_score: null,
                     reasons: [data.reasons?.[0] || `Server error ${response.status}`]
                 });
                 return;
@@ -630,19 +645,35 @@
     // ── Render result card ────────────────────────────────────────
     function renderResult(data) {
         const { url, verdict, risk_score, reasons } = data;
-        const v = ['safe','suspicious','phishing'].includes(verdict) ? verdict : 'suspicious';
+        const v = ['safe','suspicious','phishing', 'unreachable'].includes(verdict) ? verdict : 'suspicious';
 
         const icons = {
             safe:       '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>',
             suspicious: '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 14h-2v-2h2v2zm0-4h-2V7h2v4z"/>',
             phishing:   '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 14h-2v-2h2v2zm0-4h-2V7h2v4z"/>',
+            unreachable: '<path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm1 14h-2v-2h2v2zm0-4h-2V7h2v4z"/>',
         };
 
-        const labels = { safe: '✓ Safe', suspicious: '⚠ Suspicious', phishing: '✕ Phishing' };
+        const labels = { safe: '✓ Safe', suspicious: '⚠ Suspicious', phishing: '✕ Phishing', unreachable: '? Unable to Analyse', };
 
         const reasonsHtml = (reasons || []).map(r =>
             `<li><div class="dot ${v}"></div><span>${escHtml(r)}</span></li>`
         ).join('');
+
+        const scoreNote = v === 'safe'
+            ? 'Based on AI structural analysis'
+            : 'Based on AI structural analysis and phishing corpus similarity';
+        // hide score bar for unreachable (no score to show)
+        const scoreHtml = v === 'unreachable' ? '' : `
+            <div class="risk-label-row">
+                <span class="risk-label-text">Risk Score</span>
+                <span class="risk-score-num ${v}">${risk_score}<span class="risk-score-denom">/100</span></span>
+            </div>
+            <div class="bar-track">
+                <div class="bar-fill ${v}" id="barFill" style="width:0%"></div>
+            </div>
+            <p class="score-note">${scoreNote}</p>`
+            ;
 
         resultArea.innerHTML = `
             <div class="result-card ${v}">
@@ -652,7 +683,7 @@
                             <svg viewBox="0 0 24 24">${icons[v]}</svg>
                             ${labels[v]}
                         </div>
-                        <span class="ai-tag">AI verdict</span>
+                        <span class="ai-tag">${v === 'unreachable' ? 'Analysis failed' : 'AI verdict'}</span>
                     </div>
 
                     <div class="url-box">
@@ -660,18 +691,12 @@
                         <p class="url-text">${escHtml(url)}</p>
                     </div>
 
-                    <div class="risk-label-row">
-                        <span class="risk-label-text">Risk Score</span>
-                        <span class="risk-score-num ${v}">${risk_score}<span class="risk-score-denom">/100</span></span>
-                    </div>
-                    <div class="bar-track">
-                        <div class="bar-fill ${v}" id="barFill" style="width:0%"></div>
-                    </div>
+                    ${scoreHtml}
                 </div>
 
                 ${reasonsHtml ? `
                 <div class="result-reasons">
-                    <p class="reasons-heading">Why</p>
+                    <p class="reasons-heading">${v === 'unreachable' ? 'What happened' : 'Why'}</p>
                     <ul class="reasons-list">${reasonsHtml}</ul>
                 </div>` : ''}
             </div>
@@ -679,12 +704,14 @@
         `;
 
         // Animate bar
-        requestAnimationFrame(() => {
+        if (v !== 'unreachable') {    
             requestAnimationFrame(() => {
-                const fill = document.getElementById('barFill');
-                if (fill) fill.style.width = `${risk_score}%`;
+                requestAnimationFrame(() => {
+                    const fill = document.getElementById('barFill');
+                    if (fill) fill.style.width = `${risk_score}%`;
+                });
             });
-        });
+        }
 
         document.getElementById('resetBtn').addEventListener('click', () => {
             resultArea.innerHTML = '';

@@ -61,6 +61,20 @@ def extract_keyword_hits(text, categories):
 # -------------------------
 # URL analysis (stronger)
 # -------------------------
+_COMPOUND_SLD = {"com", "co", "org", "net", "gov", "edu", "ac", "sch", "mil"}
+
+
+def _count_subdomains(domain: str) -> int:
+    """Count real subdomains, handling compound TLDs like .com.my, .co.uk"""
+    parts = domain.split(".")
+    if len(parts) <= 2:
+        return 0  # e.g. google.com → 0 subdomains
+    # If second-to-last part is a known SLD segment, registered domain is 3 parts deep
+    if len(parts) >= 3 and parts[-2] in _COMPOUND_SLD:
+        return max(0, len(parts) - 3)  # www.sc.com.my → 4-3 = 1
+    return max(0, len(parts) - 2)  # www.google.com → 3-2 = 1
+
+
 def analyze_url(url):
     parsed = urlparse(url)
 
@@ -69,12 +83,13 @@ def analyze_url(url):
 
     return {
         "domain": domain,
-        "subdomain_count": domain.count("."),
+        "subdomain_count": _count_subdomains(domain),
         "uses_ip": bool(re.match(r"^\d+\.\d+\.\d+\.\d+$", domain)),
         "path_length": len(parsed.path),
         "query_length": len(parsed.query),
         "has_suspicious_tld": any(
-            tld in domain for tld in [".tk", ".ml", ".cf", ".ga"]
+            tld in domain
+            for tld in [".tk", ".ml", ".cf", ".ga", ".xyz", ".top", ".pw", ".gq"]
         ),
         "path_entropy_hint": len(set(path)) / (len(path) + 1),
     }
@@ -251,7 +266,10 @@ def extract_features(data: dict) -> dict:
         "risk_score_inputs": {
             "has_password_forms": form_features["password_forms"] > 0,
             "external_form_post": form_features["external_form_posts"] > 0,
-            "suspicious_scripts": len(script_features["script_signals"]) > 0,
+            "suspicious_scripts": bool(
+                set(script_features["script_signals"])
+                & {"eval_usage", "base64_obfuscation"}
+            ),
             "urgent_language": "urgency" in keywords,
         },
     }
